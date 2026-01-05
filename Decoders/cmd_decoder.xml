@@ -1,0 +1,6 @@
+<decoder name="linux_command">
+    <program_name>bash_history</program_name>
+    <prematch>USER</prematch>
+    <regex offset="after_prematch">^=(\S*)\s+PWD=(\S*)\s+CMD=(\.+)</regex>
+    <order>user,directory,command</order>
+</decoder>
