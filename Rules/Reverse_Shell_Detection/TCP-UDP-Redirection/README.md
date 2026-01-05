@@ -1,4 +1,12 @@
 # 🛡️ Wazuh Rule – Unix Reverse Shell via `/dev/tcp` or `/dev/udp`
+> 🚨 **WARNING**
+>
+> This rule depends on **Bash command-line audit logging**.
+>
+> You **must** configure command auditing as documented in  
+> 👉 **[`Prerequisites/command_line_audit.md`](Prerequisites/command_line_audit.md)**
+>
+> Failure to meet these prerequisites will result in **no detections**.
 
 ## Rule ID
 **100101**
