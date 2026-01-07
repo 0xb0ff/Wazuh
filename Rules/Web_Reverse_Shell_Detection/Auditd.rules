@@ -1,0 +1,11 @@
+# 64 Bit version
+# Please change to your according uid by distro !
+# Check
+
+
+## 1) High-signal: execve from Apache user (www-data) Debian / Ubuntu
+-a always,exit -F arch=b64 -S execve -F uid=33 -k apache-exec
+
+# 2) Optional: outbound connects from Apache user (useful for reverse shells/C2) Debian / Ubuntu
+-a always,exit -F arch=b64 -S socket -F a0=10 -F euid=33 -k webshell-net-connect
+-a always,exit -F arch=b64 -S socket -F a0=2 -F euid=33 -k webshell-net-connect
