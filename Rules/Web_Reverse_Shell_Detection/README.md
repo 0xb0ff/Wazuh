@@ -6,6 +6,61 @@ The rules focus on **runtime behavior**, not signatures, and are intended for **
 
 ---
 
+## ✅ Prerequisites (MANDATORY)
+
+⚠️ **auditd is a strict prerequisite**
+
+These rules **WILL NOT WORK** without `auditd`.  
+They rely on **kernel-level telemetry** (`execve`, `connect`) provided by auditd.
+
+### Required components
+
+- ✅ `auditd` installed and running on the host
+- ✅ Wazuh **agent** installed on the host
+- ✅ Wazuh **manager** receiving audit events
+
+---
+
+## 🔧 Wazuh Agent Configuration (REQUIRED)
+
+The Wazuh agent **must** be configured to ingest audit logs.
+
+On the **agent**, ensure the following configuration is present in  
+`/var/ossec/etc/ossec.conf`:
+
+```xml
+<ossec_config>
+  <localfile>
+    <location>/var/log/audit/audit.log</location>
+    <log_format>audit</log_format>
+  </localfile>
+</ossec_config>
+```
+
+After applying the configuration, restart the agent:
+
+```bash
+sudo systemctl restart wazuh-agent
+```
+
+---
+
+### Verification
+
+You should see audit events arriving on the manager:
+
+```bash
+grep audit /var/ossec/logs/archives/archives.log
+```
+
+If no events appear, verify:
+
+- `auditd` is running
+- permissions on `/var/log/audit/audit.log`
+- the agent is connected to the manager
+
+---
+
 ## 📌 Rules Overview
 
 ### Rule `100520` — Command execution (web shell)
@@ -23,10 +78,12 @@ The rules focus on **runtime behavior**, not signatures, and are intended for **
 ```
 
 **What it detects**
+
 - Command execution (`execve`) performed by a web server process
 - Typical indicators of **RCE or web shell execution**
 
 **Why it is high confidence**
+
 - Web servers should not spawn shells or arbitrary commands
 - Very low false-positive rate when audit rules are correctly scoped
 
@@ -48,10 +105,12 @@ The rules focus on **runtime behavior**, not signatures, and are intended for **
 ```
 
 **What it detects**
+
 - Outbound network connections initiated by a web server process
 - Common in **reverse shells, C2 callbacks, or payload staging**
 
 **Why it is critical**
+
 - Web servers rarely initiate outbound connections
 - Strong indicator of **post-exploitation activity**
 
@@ -59,18 +118,18 @@ The rules focus on **runtime behavior**, not signatures, and are intended for **
 
 ## ⚠️ IMPORTANT — UID WARNING (READ THIS)
 
-These rules **depend on auditd rules that scope execution by UID**  
-⚠️ **Using the wrong UID will either miss attacks or create excessive noise**
+These rules **depend on auditd rules that scope execution by UID**.  
+⚠️ **Using the wrong UID will either miss attacks or create excessive noise**.
 
 ### Web server UID differs by distribution
 
-| Distribution | Web Server User | Typical UID |
-|--------------|-----------------|-------------|
-| Debian / Ubuntu | www-data | **33** |
-| RHEL / CentOS / Rocky / Alma | apache | **48** |
-| Fedora | apache | **48** |
-| openSUSE | wwwrun | **30** |
-| Alpine Linux | apache | **100** |
+| Distribution                 | Web Server User | Typical UID |
+| ---------------------------- | --------------- | ----------- |
+| Debian / Ubuntu              | www-data        | **33**      |
+| RHEL / CentOS / Rocky / Alma | apache          | **48**      |
+| Fedora                       | apache          | **48**      |
+| openSUSE                     | wwwrun          | **30**      |
+| Alpine Linux                 | apache          | **100**     |
 
 ❗ **Do NOT hardcode UID blindly**
 
@@ -120,6 +179,7 @@ id nginx
 ## 🧪 Testing
 
 Recommended testing approach:
+
 - Use controlled `sudo -u <webuser>` command execution
 - Validate with `ossec-logtest`
 - Avoid deploying real web shells on production systems
@@ -134,4 +194,5 @@ Test in a **lab environment** before deploying to production.
 ---
 
 ## 📄 License
+
 MIT
