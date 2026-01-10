@@ -1,0 +1,245 @@
+###############################################################################
+# IMPORTANT:
+# Several interpreters and tools are versioned on Debian and other distributions
+# (e.g. /usr/bin/php8.4, /usr/bin/ruby3.3, /usr/bin/python3.11).
+#
+# Auditd does NOT support wildcards for the "exe=" filter.
+# You MUST adjust and maintain these paths according to the binaries
+# actually present on the system.
+#
+# Recommended verification commands:
+#   readlink -f $(which php)
+#   readlink -f $(which ruby)
+#   readlink -f $(which python3)
+#   readlink -f $(which socat)
+#
+# Failure to update versioned paths may result in missed detections.
+###############################################################################
+
+# ============================================================
+# Auditd ruleset – Web servers (detection-oriented)
+# Important: adjust versioned paths (php8.4, python3.13, ruby3.3, etc.)
+# ============================================================
+
+# First rule - delete all
+-D
+
+## Increase the buffers to survive stress events.
+## Make this bigger for busy systems
+-b 8192
+
+## This determine how long to wait in burst of events
+--backlog_wait_time 60000
+
+## Set failure mode to syslog
+-f 1
+
+# ============================================================
+# 1) WEB CONTEXT (uid=33) – RCE/webshell/staging
+#    Track command execution + outbound connections by the web user
+# ============================================================
+
+# Web user executed a command (RCE / webshell)
+-a always,exit -F arch=b64 -S execve  -F uid=33 -k apache-exec
+-a always,exit -F arch=b32 -S execve  -F uid=33 -k apache-exec
+
+# Web user initiated outbound connect() (reverse shell / C2)
+# Note: /dev/tcp is handled in shell; audit sees connect() syscall
+-a always,exit -F arch=b64 -S connect -F uid=33 -k webshell-net-connect
+-a always,exit -F arch=b32 -S connect -F uid=33 -k webshell-net-connect
+
+
+# ============================================================
+# 2) OPTIONAL – HUMAN ACTIVITY VISIBILITY (noisy on busy hosts)
+#    Enable only if you need full command attribution
+# ============================================================
+
+## Human users: all executed commands (interactive + scripts) ***** Debug ONLY *****
+#-a always,exit -F arch=b64 -S execve -F auid>=1000 -F auid!=-1 -k user-commands
+#-a always,exit -F arch=b32 -S execve -F auid>=1000 -F auid!=-1 -k user-commands
+
+## Root commands that originate from a human (sudo/su) ***** Debug ONLY *****
+#-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=-1 -k root-commands
+#-a always,exit -F arch=b32 -S execve -F euid=0 -F auid>=1000 -F auid!=-1 -k root-commands
+
+## Root direct login sessions (AUId=0) – only if you really log in as root ***** Debug ONLY *****
+#-a always,exit -F arch=b64 -S execve -F auid=0 -k root-direct
+#-a always,exit -F arch=b32 -S execve -F auid=0 -k root-direct
+
+
+# ============================================================
+# 3) INTERACTIVE SHELLS – outbound connect() (captures /dev/tcp)
+#    Useful to catch reverse shells launched from sh/bash/dash
+# ============================================================
+
+-a always,exit -F arch=b64 -S connect -F exe=/bin/sh         -k shell-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/bash       -k shell-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/dash   -k shell-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/sh         -k shell-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/bash       -k shell-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/dash   -k shell-net-connect
+
+
+# ============================================================
+# 4) NETCAT FAMILY – outbound connect() (nc/ncat/busybox)
+#    Detect netcat-like connectivity used for reverse shells / pivots
+# ============================================================
+
+# 64-bit
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/nc              -k netcat-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/nc                  -k netcat-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/nc.openbsd      -k netcat-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/nc.traditional  -k netcat-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/netcat          -k netcat-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/ncat            -k netcat-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/ncat                -k netcat-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/busybox             -k netcat-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/busybox         -k netcat-connect
+
+# 32-bit
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/nc              -k netcat-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/nc                  -k netcat-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/nc.openbsd      -k netcat-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/nc.traditional  -k netcat-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/netcat          -k netcat-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/ncat            -k netcat-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/ncat                -k netcat-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/busybox             -k netcat-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/busybox         -k netcat-connect
+
+
+# ============================================================
+# 5) DOWNLOAD STAGING – curl/wget execve
+#    Useful for "download & execute" correlation in Wazuh/SIEM
+# ============================================================
+
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/curl  -k curl-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/curl  -k curl-exec
+
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/wget  -k wget-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/wget  -k wget-exec
+
+
+# ============================================================
+# 6) PYTHON – outbound connect() + execve
+#    Important: add versioned paths when relevant (ex: python3.13)
+# ============================================================
+
+# connect()
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/python     -k python-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/python2    -k python-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/python3    -k python-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/python         -k python-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/python3        -k python-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/python3.13     -k python-connect
+
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/python     -k python-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/python2    -k python-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/python3    -k python-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/python         -k python-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/python3        -k python-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/python3.13     -k python-connect
+
+# execve (to inspect -c payloads / scripts)
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/python      -k python-exec
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/python2     -k python-exec
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/python3     -k python-exec
+-a always,exit -F arch=b64 -S execve -F exe=/bin/python          -k python-exec
+-a always,exit -F arch=b64 -S execve -F exe=/bin/python3         -k python-exec
+-a always,exit -F arch=b64 -S execve -F exe=/bin/python3.13      -k python-exec
+
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/python      -k python-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/python2     -k python-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/python3     -k python-exec
+-a always,exit -F arch=b32 -S execve -F exe=/bin/python          -k python-exec
+-a always,exit -F arch=b32 -S execve -F exe=/bin/python3         -k python-exec
+-a always,exit -F arch=b32 -S execve -F exe=/bin/python3.13      -k python-exec
+
+
+# ============================================================
+# 7) PERL – outbound connect() + execve
+# ============================================================
+
+# connect()
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/perl  -k perl-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/perl      -k perl-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/perl  -k perl-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/perl      -k perl-connect
+
+# execve
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/perl   -k perl-exec
+-a always,exit -F arch=b64 -S execve -F exe=/bin/perl       -k perl-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/perl   -k perl-exec
+-a always,exit -F arch=b32 -S execve -F exe=/bin/perl       -k perl-exec
+
+
+# ============================================================
+# 8) PHP – outbound connect() + execve (CLI) + optional FPM ideas
+#    Important: adapt versioned paths (php8.4, php8.2, etc.)
+# ============================================================
+
+# connect()
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/php        -k php-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/php            -k php-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/sbin/php-fpm   -k php-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/php8.4     -k php-net-connect
+
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/php        -k php-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/php            -k php-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/sbin/php-fpm   -k php-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/php8.4     -k php-net-connect
+
+# execve (CLI php -r payloads, scripts)
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/php         -k php-exec
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/php8.4      -k php-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/php         -k php-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/php8.4      -k php-exec
+
+# Optional FPM ideas (only if needed, can be tricky/varies by distro/service name)
+#-a always,exit -F arch=b64 -S connect -F comm=php-fpm   -k php-net-connect
+#-a always,exit -F arch=b32 -S connect -F comm=php-fpm   -k php-net-connect
+
+
+# ============================================================
+# 9) SOCAT – connect() + execve
+#    Note: on Debian the binary may be socat or socat1 depending on packaging
+# ============================================================
+
+# connect()
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/socat   -k socat-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/socat       -k socat-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/socat1  -k socat-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/bin/socat1      -k socat-net-connect
+
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/socat   -k socat-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/socat       -k socat-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/socat1  -k socat-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/bin/socat1      -k socat-net-connect
+
+# execve
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/socat    -k socat-exec
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/socat1   -k socat-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/socat    -k socat-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/socat1   -k socat-exec
+
+
+# ============================================================
+# 10) RUBY / NODE – outbound connect()
+#     Important: adjust versioned Ruby paths (ruby3.3, ruby3.2, etc.)
+# ============================================================
+
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/ruby      -k ruby-net-connect
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/ruby3.3   -k ruby-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/ruby      -k ruby-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/ruby3.3   -k ruby-net-connect
+
+-a always,exit -F arch=b64 -S connect -F exe=/usr/bin/node      -k node-net-connect
+-a always,exit -F arch=b32 -S connect -F exe=/usr/bin/node      -k node-net-connect
+
+
+# ============================================================
+# 11) FIFO STAGING – mkfifo (often used in FIFO reverse shells)
+# ============================================================
+
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/mkfifo -k mkfifo-exec
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/mkfifo -k mkfifo-exec
