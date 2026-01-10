@@ -1,0 +1,19 @@
+<group name="auditd,download_and_exec,">
+
+  <!-- Baseline: curl executed (visibility) -->
+  <rule id="110400" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">curl-exec</field>
+    <description>curl executed (baseline)</description>
+    <group>network,</group>
+  </rule>
+
+  <!-- Baseline: wget executed (visibility) -->
+  <rule id="110402" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">wget-exec</field>
+    <description>wget executed (baseline)</description>
+    <group>network,</group>
+  </rule>
+
+</group>

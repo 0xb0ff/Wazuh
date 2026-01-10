@@ -1,0 +1,35 @@
+<group name="auditd,shell,network,reverse_shell,">
+
+  <!-- Baseline: any shell initiating a network connection -->
+  <rule id="110200" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">shell-net-connect</field>
+    <description>
+	Shell initiated a network connection (baseline visibility)
+    </description>
+    <group>network,</group>
+  </rule>
+
+  <!-- Critical: web user (www-data) -->
+  <rule id="110201" level="15">
+    <if_sid>110200</if_sid>
+    <field name="audit.uid">^33$</field>
+    <description>
+      Critical: web user shell initiated outbound connection
+      (high-confidence reverse shell)
+    </description>
+    <group>attack,reverse_shell,web,</group>
+  </rule>
+
+  <!-- High-risk: any non-root user -->
+  <rule id="110210" level="13">
+    <if_sid>110200</if_sid>
+    <field name="audit.uid" negate="yes">^0$</field>
+    <description>
+      High-risk: non-root shell initiated an outbound network connection
+      (possible reverse shell or post-exploitation)
+    </description>
+    <group>attack,reverse_shell,</group>
+  </rule>
+
+</group>

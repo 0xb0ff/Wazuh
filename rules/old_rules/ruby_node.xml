@@ -1,0 +1,41 @@
+<group name="auditd,ruby,node,reverse_shell,">
+
+  <!-- Base: Ruby connect() -->
+  <rule id="130000" level="8">
+    <if_group>audit</if_group>
+    <match>ruby-net-connect</match>
+    <description>Ruby initiated a network connection</description>
+    <group>network,</group>
+  </rule>
+
+  <!-- Base: Node connect() -->
+  <rule id="130001" level="8">
+    <if_group>audit</if_group>
+    <match>node-net-connect</match>
+    <description>Node.js initiated a network connection</description>
+    <group>network,</group>
+  </rule>
+
+  <!-- High: any non-root = everything except uid=0 -->
+  <rule id="130009" level="0">
+    <if_sid>130000</if_sid>
+    <field name="uid">^0$</field>
+    <description>Ignore Ruby network connect from root (uid=0)</description>
+    <options>no_log</options>
+  </rule>
+
+  <rule id="130010" level="12">
+    <if_sid>130000</if_sid>
+    <description>High-risk: non-root Ruby initiated outbound network connection</description>
+    <group>attack,network,</group>
+  </rule>
+
+  <!-- Critical: Ruby reverse shell via PROCTITLE hex -->
+  <rule id="130022" level="15">
+    <if_sid>130010</if_sid>
+    <regex>TCPSocket\.new|IO\.popen|Dir\.chdir|fork|spawn|Process\.spawn|544350536f636b65742e6e6577|494f2e706f70656e|4469722e6368646972|666f726b</regex>
+    <description>Critical: Ruby reverse shell pattern (spawn("sh") and/or TCPSocket.new) in PROCTITLE</description>
+    <group>attack,reverse_shell,critical,</group>
+  </rule>
+
+</group>

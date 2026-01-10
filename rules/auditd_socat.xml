@@ -1,0 +1,19 @@
+<group name="auditd,socat,reverse_shell,">
+
+  <!-- Base: socat initiated a network connection -->
+  <rule id="110460" level="13">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">socat-net-connect</field>
+    <description>High-risk: socat initiated a network connection (connect syscall)</description>
+    <group>attack,network,</group>
+  </rule>
+
+  <!-- Escalation: socat executing a shell -->
+  <rule id="110461" level="15">
+    <if_sid>110460</if_sid>
+    <regex>EXEC:\s*'?(/bin/)?sh|EXEC:\s*'?(/bin/)?bash</regex>
+    <description>Critical: socat reverse shell (EXEC:sh/bash)</description>
+    <group>attack,reverse_shell,critical,</group>
+  </rule>
+
+</group>

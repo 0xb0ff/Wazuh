@@ -1,0 +1,70 @@
+<group name="auditd,perl,network,reverse_shell,">
+
+  <!-- =========================================================
+       BASELINE: Perl initiates a network connection (connect syscall)
+       Behavior signal (investigation), not proof by itself
+       ========================================================= -->
+  <rule id="110500" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">perl-connect</field>
+    <description>Perl initiated an outbound network connection (connect syscall)</description>
+    <group>network,perl,</group>
+  </rule>
+
+  <!-- Escalation: web context -->
+  <rule id="110501" level="15">
+    <if_sid>110500</if_sid>
+    <field name="uid">^33$</field>
+    <description>Critical: web user Perl initiated outbound network connection (possible webshell/RCE)</description>
+    <group>attack,reverse_shell,web,critical,perl,</group>
+  </rule>
+
+  <!-- =========================================================
+       BASELINE: Perl executed (execve)
+       Needed to detect one-liners and execution primitives
+       ========================================================= -->
+  <rule id="110510" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">perl-exec</field>
+    <description>Perl executed (baseline visibility)</description>
+    <group>process,perl,</group>
+  </rule>
+
+  <!-- =========================================================
+       HIGH/CRITICAL: Perl reverse shell indicators (HEX proctitle)
+       Covers common patterns:
+         perl -e 'use Socket; ... connect ... exec("sh -i")'
+         perl -MIO::Socket::INET -e '...'
+       Notes:
+         -e\0 = 2d6500
+         "use Socket" = 75736520536f636b6574
+         "IO::Socket" = 494f3a3a536f636b6574
+         "connect" = 636f6e6e656374
+         "exec" = 65786563
+         "/bin/sh" = 2f62696e2f7368
+         "sh" arg token often appears as 007368
+       ========================================================= -->
+  <rule id="110511" level="15">
+    <if_sid>110510</if_sid>
+    <regex>2d6500|75736520536f636b6574|494f3a3a536f636b6574|636f6e6e656374|65786563|2f62696e2f7368|007368</regex>
+    <description>Critical: Perl reverse shell indicators (hex: -e/use Socket/IO::Socket/connect/exec/sh)</description>
+    <group>attack,reverse_shell,perl,critical,</group>
+  </rule>
+
+  <!-- Strong confirmation: connect + sh together -->
+  <rule id="110512" level="15">
+    <if_sid>110510</if_sid>
+    <regex>636f6e6e656374.*2f62696e2f7368|636f6e6e656374.*007368</regex>
+    <description>Critical: Perl connect combined with sh (/bin/sh) – reverse shell likely</description>
+    <group>attack,reverse_shell,perl,critical,</group>
+  </rule>
+
+  <!-- Escalation: Perl reverse shell indicators executed by web user -->
+  <rule id="110513" level="15">
+    <if_sid>110511,110512</if_sid>
+    <field name="uid">^33$</field>
+    <description>Critical: web user Perl executed reverse shell primitives</description>
+    <group>attack,reverse_shell,web,critical,perl,</group>
+  </rule>
+
+</group>

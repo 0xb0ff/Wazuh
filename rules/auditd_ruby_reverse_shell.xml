@@ -1,0 +1,64 @@
+<group name="auditd,ruby,network,reverse_shell,">
+
+  <!-- =========================================================
+       BASELINE: Ruby connect() (connect syscall)
+       ========================================================= -->
+  <rule id="130000" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">ruby-net-connect</field>
+    <description>Ruby initiated a network connection (baseline)</description>
+    <group>network,ruby,</group>
+  </rule>
+
+  <!-- Root context: still suspicious (post-exploitation / admin misuse) -->
+  <rule id="130005" level="15">
+    <if_sid>130000</if_sid>
+    <field name="audit.uid">^0$</field>
+    <description>Critical: root Ruby initiated an outbound network connection</description>
+    <group>attack,network,root,ruby,critical,</group>
+  </rule>
+
+  <!-- Non-root context: high-risk -->
+  <rule id="130010" level="12">
+    <if_sid>130000</if_sid>
+    <field name="audit.uid" negate="yes">^0$</field>
+    <description>High-risk: non-root Ruby initiated an outbound network connection</description>
+    <group>attack,network,ruby,</group>
+  </rule>
+
+  <!-- =========================================================
+       CRITICAL: Ruby reverse shell primitives (ASCII best-effort)
+       ========================================================= -->
+  <rule id="130020" level="15">
+    <if_sid>130000</if_sid>
+    <regex>TCPSocket|spawn\(|Process\.spawn|IO\.popen|fork|Dir\.chdir</regex>
+    <description>Critical: Ruby reverse shell indicators (TCPSocket/spawn/IO.popen/fork/Dir.chdir)</description>
+    <group>attack,reverse_shell,ruby,critical,</group>
+  </rule>
+
+  <!-- =========================================================
+       CRITICAL: Ruby reverse shell primitives (PROCTITLE HEX)
+       TCPSocket.new  = 544350536f636b65742e6e6577
+       TCPSocket      = 544350536f636b6574
+       IO.popen       = 494f2e706f70656e
+       Dir.chdir      = 4469722e6368646972
+       fork           = 666f726b
+       spawn          = 737061776e
+       Process.spawn  = 50726f636573732e737061776e
+       ========================================================= -->
+  <rule id="130021" level="15">
+    <if_sid>130000</if_sid>
+    <regex>544350536f636b65742e6e6577|544350536f636b6574|494f2e706f70656e|4469722e6368646972|666f726b|737061776e|50726f636573732e737061776e</regex>
+    <description>Critical: Ruby reverse shell indicators in PROCTITLE hex</description>
+    <group>attack,reverse_shell,ruby,critical,</group>
+  </rule>
+
+  <!-- Web escalation -->
+  <rule id="130022" level="15">
+    <if_sid>130020,130021</if_sid>
+    <field name="audit.uid">^33$</field>
+    <description>Critical: web user executed Ruby reverse shell primitives</description>
+    <group>attack,reverse_shell,web,critical,ruby,</group>
+  </rule>
+
+</group>

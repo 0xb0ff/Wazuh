@@ -1,0 +1,77 @@
+<group name="custom,auditd,reverse_shell,netcat,">
+
+  <!-- Base: auditd execve scoped to your keys -->
+  <rule id="101300" level="0">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^(user-commands|root-commands|apache-exec|root-direct)$</field>
+    <description>Base: auditd events for selected keys</description>
+    <!--<options>no_alert</options>-->
+  </rule>
+
+  <!-- Helper patterns (reused via fields) are not supported in Wazuh XML,
+       so we implement common variants explicitly. -->
+
+  <!-- Variant A: nc IP PORT -e sh -->
+<!--
+  <rule id="101301" level="15">
+    <if_sid>101300</if_sid>
+    <field name="audit.command" type="pcre2">(?i)^(nc|ncat|netcat|busybox)$</field>
+    <match type="pcre2">(?i)(?:/bin/)?(sh|bash|dash|zsh|ksh|mksh|ash|csh|tcsh|fish)</match>
+    <match>inode</match>
+    <description>[Reverse shell - HIGH confidence] netcat (-e/-c) + shell + IPv4:port (nc IP PORT -e sh)</description>
+    <group>command_execution,reverse_shell,attack</group>
+  </rule>
+-->
+
+<!-- Reverse shell avec -e + shell (ex: nc IP PORT -e sh → -e en a3 ou a4) -->
+  <rule id="101301" level="15">
+    <if_sid>101300</if_sid>
+    <field name="audit.execve.a3" type="pcre2">(?i)^(?:-e|--exec)$</field>
+    <field name="audit.execve.a4" type="pcre2">(?i)^(?:/bin/|/usr/bin/)?(sh|bash|dash|zsh|ksh|ash|csh|tcsh|fish)$</field>
+    
+      <field name="audit.execve.a1" type="pcre2">(?i)^(?:-e|--exec)$</field>
+      <field name="audit.execve.a2" type="pcre2">(?i)^(?:/bin/|/usr/bin/)?(sh|bash|dash|zsh|ksh|ash|csh|tcsh|fish)$</field>
+    
+    <description>[Reverse shell - Haute confiance] nc avec -e/--exec + shell</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+  </rule>
+
+
+
+
+
+
+
+
+
+  <!-- Variant B: nc -e sh IP PORT -->
+  <rule id="101302" level="15">
+    <if_sid>101300</if_sid>
+    <field name="audit.execve.a0" type="pcre2">(?i)^(nc|ncat|netcat)$</field>
+    <field name="audit.execve.a1" type="pcre2">(?i)^-(e|c)$</field>
+    <field name="audit.execve.a2" type="pcre2">(?i)^(?:/bin/)?(sh|bash|dash|zsh|ksh|mksh|ash|csh|tcsh|fish)$</field>
+    <field name="audit.execve.a3" type="pcre2">^\\d{1,3}(?:\\.\\d{1,3}){3}$</field>
+    <field name="audit.execve.a4" type="pcre2">^\\d{1,5}$</field>
+    <description>[Reverse shell - HIGH confidence] netcat (-e/-c) + shell + IPv4:port (nc -e sh IP PORT)</description>
+    <group>command_execution,reverse_shell,attack</group>
+  </rule>
+
+  <!-- Variant C: nc -c sh IP PORT (your other example is covered by Variant B already) -->
+
+  <!-- Variant D: busybox nc IP PORT -e sh -->
+  <rule id="101303" level="15">
+    <if_sid>101300</if_sid>
+    <field name="audit.execve.a0" type="pcre2">(?i)^busybox$</field>
+    <field name="audit.execve.a1" type="pcre2">(?i)^(nc|ncat|netcat)$</field>
+    <field name="audit.execve.a2" type="pcre2">^\\d{1,3}(?:\\.\\d{1,3}){3}$</field>
+    <field name="audit.execve.a3" type="pcre2">^\\d{1,5}$</field>
+    <field name="audit.execve.a4" type="pcre2">(?i)^-(e|c)$</field>
+    <field name="audit.execve.a5" type="pcre2">(?i)^(?:/bin/)?(sh|bash|dash|zsh|ksh|mksh|ash|csh|tcsh|fish)$</field>
+    <description>[Reverse shell - HIGH confidence] busybox netcat (-e/-c) + shell + IPv4:port</description>
+    <group>command_execution,reverse_shell,attack</group>
+  </rule>
+
+</group>
+

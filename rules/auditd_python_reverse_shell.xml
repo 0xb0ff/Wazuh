@@ -1,0 +1,72 @@
+<group name="auditd,python,network,reverse_shell,">
+
+  <!-- =========================================================
+       BASELINE: Python initiates a network connection (connect syscall)
+       Behavior signal (investigation), not proof by itself
+       ========================================================= -->
+  <rule id="110520" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">python-connect</field>
+    <description>Python initiated an outbound network connection (connect syscall)</description>
+    <group>network,python,</group>
+  </rule>
+
+  <!-- Escalation: web context -->
+  <rule id="110521" level="15">
+    <if_sid>110520</if_sid>
+    <field name="uid">^33$</field>
+    <description>Critical: web user Python initiated outbound network connection (possible webshell/RCE)</description>
+    <group>attack,reverse_shell,web,critical,python,</group>
+  </rule>
+
+  <!-- =========================================================
+       BASELINE: Python executed (execve)
+       Needed to detect one-liners / -c payloads and primitives
+       ========================================================= -->
+  <rule id="92600" level="3" overwrite="yes">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">python-exec</field>
+    <description>Python executed (baseline visibility)</description>
+    <group>process,python,</group>
+  </rule>
+
+  <!-- =========================================================
+       CRITICAL: Python reverse shell indicators (HEX proctitle)
+       Covers common patterns:
+         python -c 'import socket,subprocess,os; s.connect(...); os.dup2(...); pty.spawn("sh")'
+       Notes:
+         -c\0 = 2d6300
+         "import" = 696d706f7274
+         "socket" = 736f636b6574
+         "connect" = 636f6e6e656374
+         "subprocess" = 73756270726f63657373
+         "dup2" = 64757032
+         "pty" = 707479
+         "spawn" = 737061776e
+         "/bin/sh" = 2f62696e2f7368
+         "sh" token often appears as 007368
+       ========================================================= -->
+  <rule id="110531" level="15">
+    <if_sid>92600</if_sid>
+    <regex>2d6300|696d706f7274|736f636b6574|636f6e6e656374|73756270726f63657373|64757032|707479|737061776e|2f62696e2f7368|007368</regex>
+    <description>Critical: Python reverse shell indicators (hex: -c/import/socket/connect/subprocess/dup2/pty.spawn/sh)</description>
+    <group>attack,reverse_shell,python,critical,</group>
+  </rule>
+
+  <!-- Strong confirmation: connect + sh together -->
+  <rule id="110532" level="15">
+    <if_sid>110530</if_sid>
+    <regex>636f6e6e656374.*2f62696e2f7368|636f6e6e656374.*007368</regex>
+    <description>Critical: Python connect combined with sh (/bin/sh) – reverse shell likely</description>
+    <group>attack,reverse_shell,python,critical,</group>
+  </rule>
+
+  <!-- Escalation: Python reverse shell indicators executed by web user -->
+  <rule id="110533" level="15">
+    <if_sid>110531,110532</if_sid>
+    <field name="uid">^33$</field>
+    <description>Critical: web user Python executed reverse shell primitives</description>
+    <group>attack,reverse_shell,web,critical,python,</group>
+  </rule>
+
+</group>

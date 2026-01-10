@@ -1,0 +1,15 @@
+<group name="auditd,reverse_shell,netcat,mkfifo">
+  <rule id="110230" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">mkfifo-exec</field>
+    <description>mkfifo executed (often used in FIFO reverse shell chains)</description>
+    <group>attack,reverse_shell,</group>
+  </rule>
+
+  <rule id="110231" level="15">
+    <if_sid>110230</if_sid>
+    <field name="uid" negate="yes">^0$</field>
+    <description>High-risk: non-root executed mkfifo (investigate for reverse shell chaining)</description>
+    <group>attack,reverse_shell,</group>
+  </rule>
+</group>

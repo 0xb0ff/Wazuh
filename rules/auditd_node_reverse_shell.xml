@@ -1,0 +1,64 @@
+<group name="auditd,node,network,reverse_shell,">
+
+  <!-- =========================================================
+       BASELINE: Node.js connect() (connect syscall)
+       ========================================================= -->
+  <rule id="131000" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">node-net-connect</field>    
+    <description>Node.js initiated a network connection (baseline)</description>
+    <group>network,node,</group>
+  </rule>
+
+  <!-- Root context: still suspicious -->
+  <rule id="131005" level="15">
+    <if_sid>131000</if_sid>
+    <field name="audit.uid">^0$</field>
+    <description>Critical: root Node.js initiated an outbound network connection</description>
+    <group>attack,network,root,node,critical,</group>
+  </rule>
+
+  <!-- Non-root context: high-risk -->
+  <rule id="131010" level="12">
+    <if_sid>131000</if_sid>
+    <field name="audit.uid" negate="yes">^0$</field>
+    <description>High-risk: non-root Node.js initiated an outbound network connection</description>
+    <group>attack,network,node,</group>
+  </rule>
+
+  <!-- =========================================================
+       CRITICAL: Node reverse shell primitives (ASCII best-effort)
+       ========================================================= -->
+  <rule id="131020" level="16">
+    <if_sid>131000</if_sid>
+    <regex>child_process|require\(['"]net['"]\)|net\.Socket|execSync|exec\(|spawn\(|/bin/sh</regex>
+    <description>Critical: Node reverse shell indicators (child_process/net.Socket/exec|spawn/sh)</description>
+    <group>attack,reverse_shell,node,critical,</group>
+  </rule>
+
+  <!-- =========================================================
+       CRITICAL: Node reverse shell primitives (PROCTITLE HEX)
+       child_process = 6368696c645f70726f63657373
+       require       = 72657175697265
+       net           = 6e6574
+       net.Socket    = 6e65742e536f636b6574
+       spawn         = 737061776e
+       exec          = 65786563
+       /bin/sh       = 2f62696e2f7368
+       ========================================================= -->
+  <rule id="131021" level="15">
+    <if_sid>131000</if_sid>
+    <regex>6368696c645f70726f63657373|72657175697265.*6e6574|6e65742e536f636b6574|737061776e|65786563|2f62696e2f7368</regex>
+    <description>Critical: Node reverse shell indicators in PROCTITLE hex</description>
+    <group>attack,reverse_shell,node,critical,</group>
+  </rule>
+
+  <!-- Web escalation -->
+  <rule id="131022" level="15">
+    <if_sid>131020,131021</if_sid>
+    <field name="audit.uid">^33$</field>
+    <description>Critical: web user executed Node reverse shell primitives</description>
+    <group>attack,reverse_shell,web,critical,node,</group>
+  </rule>
+
+</group>

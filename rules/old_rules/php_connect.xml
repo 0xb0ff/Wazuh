@@ -1,0 +1,27 @@
+<group name="auditd,php,network,reverse_shell,">
+
+  <!-- Base: PHP initiated connect() (fsockopen / outbound socket) -->
+  <rule id="110440" level="13">
+    <if_group>audit</if_group>
+    <match>php-net-connect</match>
+    <description>High-risk: PHP initiated a network connection (connect syscall) - possible reverse shell/C2</description>
+    <group>attack,network,</group>
+  </rule>
+
+  <!-- Escalation: php -r contains execution primitives (order-agnostic) -->
+  <rule id="110441" level="15">
+    <if_sid>110440</if_sid>
+    <regex>php\s+-r|fsockopen|proc_open|popen|passthru|shell_exec|system|exec\s*\(|`sh|`/bin/sh</regex>
+    <description>Critical: PHP reverse shell pattern (fsockopen + command execution primitive)</description>
+    <group>attack,reverse_shell,critical,</group>
+  </rule>
+
+  <!-- Optional: very specific sh fd-redirection pattern -->
+<rule id="110442" level="15">
+  <if_sid>110440</if_sid>
+  <regex>sh\s+&lt;&amp;[0-9]+|&gt;&amp;[0-9]+\s+2&gt;&amp;[0-9]+</regex>
+  <description>Critical: PHP reverse shell with shell file-descriptor redirection</description>
+  <group>attack,reverse_shell,critical,</group>
+</rule>
+
+</group>

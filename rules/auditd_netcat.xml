@@ -1,0 +1,35 @@
+<group name="auditd,reverse_shell,netcat,">
+
+  <!-- Baseline: netcat family performed connect() (visibility) -->
+  <rule id="110310" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">netcat-connect</field>
+    <description>Netcat-like initiated network connect() (baseline)</description>
+    <group>network,</group>
+  </rule>
+
+  <!-- Step 1: -e or -c present as an argument (hex: -e\0 or -c\0) -->
+  <rule id="110311" level="10">
+    <if_sid>110310</if_sid>
+    <regex>2d6500|2d6300|2D6500|2D6300</regex>
+    <description>Netcat-like proctitle contains -e/-c argument (hex)</description>
+    <group>network,</group>
+  </rule>
+
+  <!-- Step 2: shell present as an argument (hex tokens) -->
+  <rule id="110312" level="15">
+    <if_sid>110311</if_sid>
+    <regex>007368|002f62696e2f7368|0062617368|002f62696e2f62617368|0064617368|002f7573722f62696e2f64617368|00617368|002f62696e2f617368</regex>
+    <description>Reverse shell indicator: netcat-like used -e/-c with a shell (sh/bash/dash/ash) (hex)</description>
+    <group>attack,reverse_shell,netcat,</group>
+  </rule>
+
+  <!-- Optional: escalate if web user -->
+  <rule id="110313" level="15">
+    <if_sid>110312</if_sid>
+    <field name="uid">^33$</field>
+    <description>Critical: web user netcat-like spawned a shell (-e/-c)</description>
+    <group>attack,reverse_shell,web,critical,netcat,</group>
+  </rule>
+
+</group>

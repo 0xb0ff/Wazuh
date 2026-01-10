@@ -1,0 +1,57 @@
+<group name="auditd,php,network,reverse_shell,">
+
+  <!-- =========================================================
+       BASELINE: PHP initiates a network connection (connect syscall)
+       Visibility only – not proof of compromise by itself
+       ========================================================= -->
+  <rule id="110440" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">php-net-connect</field>
+    <description>PHP initiated a network connection (connect syscall)</description>
+    <group>network,php,</group>
+  </rule>
+
+  <!-- Escalation: web context (www-data / uid 33) -->
+  <rule id="110443" level="16">
+    <if_sid>110440</if_sid>
+    <field name="uid">^33$</field>
+    <description>Critical: web user PHP initiated outbound connection (possible webshell/RCE)</description>
+    <group>attack,reverse_shell,web,critical,php,</group>
+  </rule>
+
+  <!-- =========================================================
+       BASELINE: PHP executed (execve)
+       Required to inspect command line / PHP code (-r, -f, etc.)
+       ========================================================= -->
+  <rule id="110444" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">php-exec</field>
+    <description>PHP executed (baseline)</description>
+    <group>process,php,</group>
+  </rule>
+
+   <!-- =========================================================
+        CRITICAL: PHP execution contains reverse shell primitives
+        Matches HEX proctitle (args are NULL-separated)
+        Covers: -r, fsockopen, proc_open, popen, system, exec, shell_exec
+        ========================================================= -->
+  <rule id="110445" level="15">
+    <if_sid>110444</if_sid>
+    <regex>66736f636b6f70656e|70726f635f6f70656e|706f70656e|7368656c6c5f65786563|7061737374687275|73797374656d|65786563</regex>
+    <description>Critical: PHP command contains reverse-shell primitives (hex proctitle: -r/fsockopen/proc_open/shell_exec/system/exec)</description>
+    <group>attack,reverse_shell,php,critical,</group>
+  </rule>
+
+  <!-- =========================================================
+       CRITICAL: PHP fsockopen combined with a shell
+       Strong indicator of reverse shell
+       ========================================================= -->
+
+  <rule id="110446" level="15">
+    <if_sid>110444</if_sid>
+    <regex>66736f636b6f70656e.*2f62696e2f7368|66736f636b6f70656e.*007368</regex>
+    <description>Critical: PHP fsockopen combined with sh (/bin/sh) (likely reverse shell)</description>
+    <group>attack,reverse_shell,php,critical,</group>
+  </rule>
+
+</group>

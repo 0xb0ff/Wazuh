@@ -1,0 +1,37 @@
+<group name="auditd,shell,network,reverse_shell,">
+
+  <rule id="110200" level="12">
+    <if_group>audit</if_group>
+    <if_sid>80700</if_sid>
+    <field name="audit.key">shell-net-connect</field>
+    <!--<field name="tty" negate="yes">^pts</field>-->
+    <!--<match>shell-net-connect</match>-->
+    <description>Shell initiated a network connection (connect syscall) - possible reverse shell or post-exploitation</description>
+    <mitre>
+      <id>T1059</id>  <!-- Command and Scripting Interpreter -->
+      <id>T1071</id>  <!-- Application Layer Protocol -->
+    </mitre>
+    <group>attack,reverse_shell,shell,</group>
+  </rule>
+
+  <rule id="110201" level="13">
+    <if_sid>110200</if_sid>
+    <field name="audit.syscall">connect</field>
+    <description>Shell network connection confirmed (audit.syscall=connect)</description>
+    <group>attack,network,</group>
+  </rule>
+
+ <rule id="110202" level="15">
+    <if_sid>110201</if_sid>
+    <field name="audit.exe">/bin/sh|/bin/bash|/usr/bin/dash</field>
+    <description>High-risk shell (/bin/sh, /bin/bash, /usr/bin/dash) initiated outbound network connection</description>
+    <group>attack,high_risk,reverse_shell,</group>
+  </rule>
+
+  <rule id="110203" level="15">
+    <if_sid>110202</if_sid>
+    <field name="audit.ppid">apache|nginx|php-fpm</field>
+    <description>Reverse shell spawned from web server process</description>
+    <group>attack,webshell,critical,</group>
+  </rule>
+</group>
