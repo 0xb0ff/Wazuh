@@ -14,6 +14,22 @@
 #   readlink -f $(which socat)
 #
 # Failure to update versioned paths may result in missed detections.
+#
+#
+# The rules below use `uid=33` (Debian/Ubuntu: www-data) to detect command execution
+# and outbound network activity in a web context.
+# On other distributions, the web server account may have a different UID
+# (e.g. apache, httpd, nginx, www, etc.).
+#
+# BEFORE deploying: verify the actual web user UID and replace `uid=33`
+# with the correct value (adjust GID as well if you filter on it).
+#
+# Quick checks:
+#   getent passwd www-data apache nginx httpd 2>/dev/null
+#   id -u www-data ; id -u apache ; id -u nginx
+#
+# Note: with PHP-FPM or custom pools, the effective UID may be the pool user,
+# not the main web service account.
 ###############################################################################
 
 # ============================================================
