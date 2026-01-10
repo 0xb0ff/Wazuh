@@ -1,0 +1,13 @@
+  <rule id="100104" level="15">
+    <decoded_as>linux_command</decoded_as>
+    <location>/var/log/cmdline</location>  <!-- Comment for testing with wazuh-logtest -->
+    <field name="command" type="pcre2">(?is)\bpython(?:3)?\b[\s\S]*?\bsocket\.socket\b[\s\S]*?\bconnect\s*\([\s\S]*?\)[\s\S]*?\bos\.dup2\s*\([\s\S]*?\)[\s\S]*?\bpty\.spawn\s*\(\s*["'](?:sh|bash)["']\s*\)</field>
+    <description>Possible Reverse Shell Command Detected (python)</description>
+    <mitre>
+      <id>T1059.004</id>
+      <id>T1059.006</id>
+      <id>T1219</id>
+      <id>T1105</id>
+    </mitre>
+    <group>command_execution,reverse_shell,attack</group>
+  </rule>
