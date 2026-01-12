@@ -13,6 +13,7 @@
   <rule id="100521" level="12">
     <if_sid>80700</if_sid>
     <field name="audit.key">webshell-net-connect</field>
+    <regex negate="yes">61706163686532002D6B007374617274</regex> <!-- * apache2 -k start  -->
     <description>[Network connection via $(audit.exe)]: Possible web shell attack detected</description>
     <mitre>
       <id>TA0011</id>

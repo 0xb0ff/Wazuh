@@ -14,10 +14,8 @@
   <rule id="110201" level="15">
     <if_sid>110200</if_sid>
     <field name="audit.uid">^33$</field>
-    <description>
-      Critical: web user shell initiated outbound connection
-      (high-confidence reverse shell)
-    </description>
+    <regex negate="yes">61706163686532002D6B007374617274</regex> <!-- * apache2 -k start  -->
+    <description>Critical: web user shell initiated outbound connection (high-confidence reverse shell)</description>
     <group>attack,reverse_shell,web,</group>
   </rule>
 
@@ -25,10 +23,8 @@
   <rule id="110210" level="13">
     <if_sid>110200</if_sid>
     <field name="audit.uid" negate="yes">^0$</field>
-    <description>
-      High-risk: non-root shell initiated an outbound network connection
-      (possible reverse shell or post-exploitation)
-    </description>
+    <regex negate="yes">61706163686532002D6B007374617274</regex> <!-- * apache2 -k start  -->
+    <description> High-risk: non-root shell initiated an outbound network connection (possible reverse shell or post-exploitation)</description>
     <group>attack,reverse_shell,</group>
   </rule>
 
